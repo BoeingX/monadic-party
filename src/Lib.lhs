@@ -1,17 +1,26 @@
-\documentclass[english]{beamer}
+\documentclass[english,10pt]{beamer}
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{babel}
 \usepackage{minted}
 
-\newenvironment{code}{\VerbatimEnvironment\begin{minted}{haskell}}{\end{minted}}
-\newenvironment{spec}{\VerbatimEnvironment\begin{minted}{haskell}}{\end{minted}}
+\newenvironment{code}{\VerbatimEnvironment\begin{minted}[breaklines]{haskell}}{\end{minted}}
+\newenvironment{spec}{\VerbatimEnvironment\begin{minted}[breaklines]{haskell}}{\end{minted}}
 \newenvironment{slide}[1]
   {\begin{frame}[fragile,environment=slide]{#1}}
   {\end{frame}}
 \long\def\ignore#1{}
 \newcommand{\credit}[1]{\par\hfill \footnotesize Credit:~\itshape#1}
+
+\newtheorem{remark}{remark}
+\newenvironment<>{remark}[1]{%
+  \setbeamercolor{block title}{fg=white,bg=red!75!black}%
+  \begin{block}{Remark}{#1}}{\end{block}}
+
+\newenvironment<>{problem}[1]{%
+  \setbeamercolor{block title}{fg=white,bg=red!75!black}%
+  \begin{block}{Problem}{#1}}{\end{block}}
 
 
 \mode<presentation>
@@ -36,8 +45,10 @@
 
 \ignore{
 \begin{code}
+{-# LANGUAGE InstanceSigs #-}
 module Lib where
 
+import Prelude hiding (Maybe(..),Either(..))
 import Control.Applicative
 import Control.Monad
 \end{code}
@@ -47,10 +58,10 @@ import Control.Monad
 	\titlepage
 \end{frame}
 
-\section{Haskell in a nutshell}
+\section{Basic Syntax}
 
 \begin{slide}{Function and currying}
-\begin{spec}
+\begin{code}
 add :: Integer -> Integer -> Integer
 add x y =  x + y
 
@@ -62,24 +73,26 @@ addOne = (+) 1
 
 addTwoOnes :: Integer
 addTwoOnes = addOne 1
-\end{spec}
+\end{code}
 \end{slide}
 
 \begin{slide}{Abstract data type}
-\begin{spec}
--- trivial ones
+\begin{code}
 data Trivial = Trivial
 data Identity a = Identity a
 data Pair a = Pair a a
 
--- simple ones
 data Maybe a = Nothing | Just a
+    deriving (Eq, Show)
 data Either a b = Left a | Right b
+    deriving (Eq, Show)
 
--- recursion!
+-- | [] and (:) are built-in syntax
+-- so we cannot "redefine" list using
+-- data [] a = [] | a : [a]
 data List a = Nil | Cons a (List a)
 data Tree a = Leaf | Node a (Tree a) (Tree a)
-\end{spec}
+\end{code}
 \end{slide}
 
 \section{Typeclassopedia}
@@ -88,10 +101,8 @@ data Tree a = Leaf | Node a (Tree a) (Tree a)
 \begin{spec}
 class Eq a where
     (==), (/=)           :: a -> a -> Bool
-
     x /= y               = not (x == y)
     x == y               = not (x /= y)
-
     {-# MINIMAL (==) | (/=) #-}
 
 instance (Eq a) => Eq (Maybe a) where
@@ -110,24 +121,48 @@ instance (Eq a) => Eq (Maybe a) where
 \end{figure}
 \end{frame}
 
-\section{From Functor to Monad}
-
-\subsection{Kind}
+\section{Functor, Applicative and Monad}
 
 \begin{slide}{Kind}
-TODO
+\begin{definition}
+A kind is the type of a type constructor or, less commonly, the type of a higher-order type operator. 
+\end{definition}
+\begin{example}
+\begin{spec}
+Int :: *
+
+Maybe :: * -> *
+Maybe Bool :: *
+
+Either :: * -> * -> *
+Either String -> * -> *
+Either String Int -> *
+
+[] :: * -> *
+[Int] :: *
+
+\end{spec}
+\end{example}
 \end{slide}
 
 \subsection{Functor}
 
-\begin{slide}{Definition}
+\begin{slide}{Functor}
+\begin{definition}
 \begin{spec}
 class Functor f where
     fmap :: (a -> b) -> f a -> f b
 \end{spec}
+\end{definition}
+
+\begin{remark}
+A functor \mintinline{haskell}{f} must be of kind \mintinline{haskell}{* -> *}.
+\end{remark}
+
+Common instances: \mintinline{haskell}{[], Maybe, Either e, IO, (->) r}
 \end{slide}
 
-\begin{slide}{Laws}
+\begin{slide}{Functor - Laws}
 \begin{spec}
 -- identity
 fmap id = id
@@ -135,79 +170,104 @@ fmap id = id
 -- composition
 fmap (g . h) = (fmap g) . (fmap h)
 \end{spec}
-\begin{itemize}
-\item A given type has at most one valid instance of Functor (\href{http://article.gmane.org/gmane.comp.lang.haskell.libraries/15384}{proof})
-\item Any Functor instance satisfying the first law (fmap id = id) will automatically satisfy the second law (\href{https://github.com/quchen/articles/blob/master/second\_functor\_law.md}{proof})
-\end{itemize}
+\begin{block}{Property}
+A given type has at most one valid instance of Functor (\href{http://article.gmane.org/gmane.comp.lang.haskell.libraries/15384}{proof})
+\end{block}
+
+\begin{block}{Property}
+Any Functor instance satisfying the first law (fmap id = id) will automatically satisfy the second law (\href{https://github.com/quchen/articles/blob/master/second\_functor\_law.md}{proof})
+\end{block}
 \end{slide}
 
-\begin{slide}{Instances - Maybe}
-\begin{spec}
-instance Maybe where
+\begin{slide}{Functor instances - Maybe}
+\begin{definition}
+\begin{code}
+instance Functor Maybe where
+    fmap :: (a -> b) -> Maybe a -> Maybe b
     fmap f (Just x) = Just (f x)
     fmap _ Nothing  = Nothing
+\end{code}
+\end{definition}
 
+\begin{example}
+\begin{spec}
 Prelude> fmap (+1) (Just 1)
 Just 2
 Prelude> fmap (+1) Nothing
 Nothing
 \end{spec}
+\end{example}
 \end{slide}
 
-\begin{slide}{Instances - Tree}
-\begin{spec}
-instance Tree where
-    fmap _ Leaf = Leaf
-    fmap f (Node a lTree rTree) = Node (f a) (fmap f lTree) (fmap f rTree)
-
-Prelude> fmap (*2) Leaf
-Leaf
-Prelude> fmap (*2) (Node 2 (Node 1) Leaf)
-Node 4 (Node 2) Leaf
-\end{spec}
-\end{slide}
-
-\begin{slide}{Instances - Either e}
-\begin{spec}
-instance Either e where
+\begin{slide}{Functor instances - Either e}
+\begin{definition}
+\begin{code}
+instance Functor (Either e) where
     fmap :: (a -> b) -> Either e a -> Either e b
     fmap _ (Left e)     = Left e
     fmap f (Right a)    = Right (f a)
+\end{code}
+\end{definition}
 
+\begin{example}
+\begin{spec}
 Prelude> fmap (+1) (Left "a")
 Left "a"
 Prelude> fmap (+1) (Right 1)
 Right 2
 \end{spec}
+\end{example}
+\end{slide}
+
+\begin{slide}{Functor instances - []}
+\begin{definition}
+\begin{spec}
+instance Functor [] where
+    fmap :: (a -> b) -> [a] -> [b]
+    fmap = map
+\end{spec}
+\end{definition}
+
+\begin{example}
+\begin{spec}
+Prelude> fmap (+1) [1,2,3]
+[2,3,4]
+\end{spec}
+\end{example}
 \end{slide}
 
 \subsection{Applicative}
-\begin{slide}{Definition}
+
+\begin{slide}{Applicative}
+\begin{definition}
 \begin{spec}
 class (Functor f) => Applicative f where
     pure :: a -> f a
     (<*>) :: f (a -> b) -> f a -> f b
 \end{spec}
+\end{definition}
+\begin{remark}
+An Applicative \mintinline{haskell}{f} must be of kind \mintinline{haskell}{* -> *}.
+\end{remark}
+Common instances: \mintinline{haskell}{[], Maybe, Either e, IO, (->) r}
 \end{slide}
 
-\begin{slide}{Laws}
+\begin{slide}{Applicative laws}
 \begin{spec}
 -- identity
 pure id <*> v = v
-
 -- homomorphism
 pure f <*> pure x = pure (f x)
-
 -- interchange
 u <*> pure y = pure ($ y) <*> u
-
 -- composition
 u <*> (v <*> w) = pure (.) <*> u <*> v <*> w
 \end{spec}
 \end{slide}
 
-\begin{slide}{Maybe is an applicative}
-\begin{spec}
+\begin{slide}{Applicative instances - Maybe}
+\begin{definition}
+\begin{code}
 instance Applicative Maybe where
     pure :: a -> Maybe a
     pure = Just
@@ -215,75 +275,289 @@ instance Applicative Maybe where
     (<*>) :: Maybe (a -> b) -> Maybe a -> Maybe b
     Nothing <*> _       = Nothing
     Just f  <*> x       = fmap f x
+\end{code}
+\end{definition}
 
+\begin{example}
+\begin{spec}
 Prelude> pure 1 :: Maybe Int
 Just 5
 Prelude> Just (+1) <*> Just 2
 Just 3
 Prelude> Just (++ " world") <*> Just "Hello"
 Just "Hello world"
+\end{spec}
+\end{example}
 \end{slide}
 
-\begin{slide}{Either a is an applicative}
-\begin{spec}
-instance Applicative (Either a) where
-    pure :: b -> Either a b
+\begin{slide}{Applicative instances - Either e}
+\begin{definition}
+\begin{code}
+instance Applicative (Either e) where
+    pure :: a -> Either e a
     pure = Right
 
-    (<*>) :: Either a (b -> c) -> Either a b -> Either a c
-    Left a  <*> _ = Left a
-    Right f <*> x = fmap f x
-
-\end{spec}
+    (<*>) :: Either e (a -> b) -> Either e a -> Either e b
+    Left e  <*> _ = Left e
+    Right f <*> a = fmap f a
+\end{code}
+\end{definition}
+\begin{example}
+TODO
+\end{example}
 \end{slide}
 
-\begin{slide}{List is an applicative}
+\begin{slide}{Applicative instances - []}
+\begin{definition}
 \begin{spec}
 instance Applicative [] where
     pure :: a -> [a]
     pure a = [a]
 
     (<*>) :: [a -> b] -> [a] -> [b]
-    fs <*> xs = concatMap (\f -> map f xs) fs
-    -- or with list comprehension
-    -- fs <*> xs = [f x | f <- fs, x <- xs]
+    fs <*> xs = [f x | f <- fs, x <- xs]
 \end{spec}
+\end{definition}
+\begin{example}
+TODO
+\end{example}
 \end{slide}
 
 \subsection{Monad}
-\begin{slide}{Definition}
+\begin{slide}{Monad}
+\begin{definition}
 \begin{spec}
 class (Applicative m) => Monad m where
     return :: a -> m a
     return = pure
 
     (>>=) :: m a -> (a -> m b) -> m b
+
+    (>>) :: m a -> m b -> m b
+    a >> b = a >>= \_ -> b
 \end{spec}
+\end{definition}
+\begin{remark}
+A Monad \mintinline{haskell}{m} must be of kind \mintinline{haskell}{* -> *}.
+\end{remark}
+Common instances: \mintinline{haskell}{[], Maybe, Either e, IO, (->) r}
 \end{slide}
 
-\begin{slide}{Laws}
-TODO
-\end{slide}
+\begin{slide}{Do notation}
+\begin{itemize}
+\item Do-notation is a syntax sugar for writing monad syntax \mintinline{haskell}{(>>)} and \mintinline{haskell}{(>>=)}
+\item It is desugared recursively during compilation
+\end{itemize}
 
-\begin{slide}{Instances - Maybe}
-TODO
-\end{slide}
-
-\subsection{Comparison}
-
-\begin{slide}{Comparison}
+\begin{overprint}
+\onslide<1>
+Desugaring the \mintinline{haskell}{(>>)} operator
+\begin{columns}[T] % align columns
+\begin{column}{.4\textwidth}
+\begin{block}{Sugar}
 \begin{spec}
--- Functor
--- (<$>) = fmap
-(<$>) ::   (a -> b) -> f a -> f b
-
--- Applicative
-(<*>) :: f (a -> b) -> f a -> f b
-
--- Monad
--- (=<<) = flip . (>>=)
-(=<<) :: (a -> m b) -> m a -> m b
+do
+    action1
+    action2
+    action3
 \end{spec}
+\end{block}
+\end{column}%
+\hfill%
+\begin{column}{.4\textwidth}
+\begin{block}{Desugared}
+\begin{spec}
+action1 >>
+do
+    action2
+    action3
+\end{spec}
+\end{block}
+\end{column}%
+\end{columns}
+
+\onslide<2>
+Desugaring the \mintinline{haskell}{(>>=)} operator
+\begin{columns}[T] % align columns
+\begin{column}{.4\textwidth}
+\begin{block}{Sugar}
+\begin{spec}
+do
+    x1 <- action1
+    x2 <- action2
+    mk_action3 x1 x2
+\end{spec}
+\end{block}
+\end{column}%
+\hfill%
+\begin{column}{.4\textwidth}
+\begin{block}{Desugared}
+\begin{spec}
+action1 >>= (\ x1 ->
+  action2 >>= (\ x2 ->
+    mk_action3 x1 x2 ))
+\end{spec}
+\end{block}
+\end{column}%
+\end{columns}
+
+\end{overprint}
+\end{slide}
+
+\begin{slide}{Monad Laws}
+\begin{spec}
+return a >>= k  =  k a
+m >>= return    =  m
+m >>= (\x -> k x >>= h)  =  (m >>= k) >>= h
+\end{spec}
+\end{slide}
+
+\begin{slide}{Monad instances - Maybe}
+\begin{definition}
+\begin{code}
+instance Monad Maybe where
+    (>>=) :: Maybe a -> (a -> Maybe b) -> Maybe b
+    Just x  >>= f = f x
+    Nothing >>= _ = Nothing
+\end{code}
+\end{definition}
+
+\begin{example}
+\begin{spec}
+Prelude> Just 1 >>= \x -> Just (x + 1)
+Just 2
+Prelude> Just 1 >>= \x -> Nothing
+Nothing
+Prelude> Nothing >>= \x -> Just (x + 1)
+Nothing
+\end{spec}
+\end{example}
+\end{slide}
+
+\begin{slide}{Monad instances - Either e}
+\begin{definition}
+TODO
+\end{definition}
+\begin{example}
+TODO
+\end{example}
+\end{slide}
+
+\begin{slide}{Monad instances - []}
+\begin{definition}
+\begin{spec}
+instance Monad [] where
+    (>>=) :: [a] -> (a -> [b]) -> [b]
+    xs >>= f = concatMap f xs
+\end{spec}
+\end{definition}
+
+\begin{example}
+\begin{spec}
+Prelude> [1, 2, 3] >>= \x -> [x]
+[2,3,4]
+Prelude> [1, 2, 3] >> \x -> replicate x x
+[1,2,2,3,3,3]
+\end{spec}
+\end{example}
+\end{slide}
+
+
+\section{Discussion}
+
+\subsection{Why bother?}
+\begin{slide}{Functor}
+\begin{problem}
+Implement the following function
+\begin{spec}
+handleResponse :: (String -> String) -> Maybe String -> Maybe String
+\end{spec}
+\end{problem}
+
+Without functor
+\begin{spec}
+handleResponse f response = case response of
+    Nothing  -> Nothing
+    Just res -> Just (f res)
+\end{spec}
+
+With functor
+\begin{spec}
+handleResponse = fmap
+\end{spec}
+\end{slide}
+
+\begin{slide}{Functor (cont'd)}
+\begin{problem}
+Reverse user's input \mintinline{haskell}{reverseInput :: IO String -> IO String}
+\end{problem}
+
+Without functor
+\begin{spec}
+TODO
+\end{spec}
+
+With functor
+\begin{spec}
+reverseInput = fmap reverse
+\end{spec}
+
+\end{slide}
+
+\begin{slide}{Applicative}
+TODO
+\end{slide}
+
+\begin{slide}{Monad}
+TODO
+\end{slide}
+
+\subsection{Fundamental difference}
+
+\begin{slide}{A sliding scale of power}
+\texttt{fmap}, \texttt{apply} and \texttt{bind}
+\begin{spec}
+(<$>) :: Functor t     => (a -> b)   -> t a -> t b
+(<*>) :: Applicative t => t (a -> b) -> t a -> t b
+(=<<) :: Monad t       => (a -> t b) -> t a -> t b
+\end{spec}
+
+\begin{overprint}
+\onslide<1>
+\begin{block}{Property}
+\mintinline{haskell}{fmap} cannot change the context \mintinline{haskell}{t}.
+\end{block}
+
+\begin{spec}
+Prelude> fmap (2*) [2,5,6]
+[4,10,12]
+\end{spec}
+
+\onslide<2>
+\begin{block}{Property}
+The changes to the context \mintinline{haskell}{(<*>)} performs are fully determined by the context \mintinline{haskell}{t} of its arguments.
+\end{block}
+
+\begin{spec}
+Prelude> [(2*),(3*)] <*> [2,5,6]
+[4,10,12,6,15,18]
+Prelude> [(2+),(3+)] <*> [2,5,6]
+[4,7,8,5,8,9]
+\end{spec}
+
+\onslide<3>
+\begin{block}{Property}
+\mintinline{haskell}{(>>=)} is able to create context from values.
+\end{block}
+\begin{spec}
+Prelude> [1,2,5] >>= \x -> replicate x x
+[1,2,2,5,5,5,5,5]
+Prelude> [0,0,0] >>= \x -> replicate x x
+[]
+\end{spec}
+
+\end{overprint}
+
 \end{slide}
 
 \end{document}
