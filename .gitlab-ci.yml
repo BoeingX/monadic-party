@@ -1,0 +1,20 @@
+image: fpco/stack-build:lts-12.19
+
+cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+        - .stack-work/
+        - .stack-root/
+
+before_script:
+    - stack --no-terminal --install-ghc test --only-dependencies
+
+stages:
+    - test
+
+test:
+    stage: test
+    only:
+        - master
+    script:
+        - stack --no-terminal --skip-ghc-check test
