@@ -32,7 +32,6 @@
 
 \title{Monadic Party}
 \subtitle{From Functor to Monad}
-\author{Baoyang \textsc{Song}}
 \date{\today}
 
 \AtBeginSection[]
@@ -303,7 +302,12 @@ instance Applicative (Either e) where
 \end{code}
 \end{definition}
 \begin{example}
-TODO
+\begin{spec}
+Prelude> Left "hello" <*> Right "world"
+Left "hello"
+Prelude> Right ("hello " ++ ) <*> Right "world"
+Right "hello world"
+\end{spec}
 \end{example}
 \end{slide}
 
@@ -319,7 +323,14 @@ instance Applicative [] where
 \end{spec}
 \end{definition}
 \begin{example}
-TODO
+\begin{spec}
+Prelude> [(+1), (+2), (+3)] <*> [1, 2]
+[2,3,3,4,4,5]
+Prelude> (+) <$> [1,2,3] <*> [1, 2]
+[2,3,3,4,4,5]
+Prelude> (,) <$> [1,2,3] <*> ['a', 'b']
+[(1,'a'),(1,'b'),(2,'a'),(2,'b'),(3,'a'),(3,'b')]
+\end{spec}
 \end{example}
 \end{slide}
 
@@ -436,10 +447,22 @@ Nothing
 
 \begin{slide}{Monad instances - Either e}
 \begin{definition}
-TODO
+\begin{code}
+instance Monad (Either e) where
+    (>>=) :: Either e a -> (a -> Either e b) -> Either e b
+    Left e  >>= f = Left e
+    Right a >>= f = f a
+\end{code}
 \end{definition}
 \begin{example}
-TODO
+\begin{spec}
+Prelude> Left "hello" >>= \x -> Right (length x)
+Left "hello"
+Prelude> Right "world" >>= \x -> Right (length x)
+Right 5
+Prelude> Right "world" >>= \x -> Left "hello"
+Left "hello"
+\end{spec}
 \end{example}
 \end{slide}
 
@@ -468,12 +491,15 @@ Prelude> [1, 2, 3] >> \x -> replicate x x
 \subsection{Why bother?}
 \begin{slide}{Functor}
 \begin{problem}
-Implement the following function
-\begin{spec}
+Implement the following function, which process the response of a HTTP request
+\begin{code}
 handleResponse :: (String -> String) -> Maybe String -> Maybe String
-\end{spec}
+\end{code}
 \end{problem}
 
+\begin{overprint}
+
+\onslide<1>
 Without functor
 \begin{spec}
 handleResponse f response = case response of
@@ -481,31 +507,64 @@ handleResponse f response = case response of
     Just res -> Just (f res)
 \end{spec}
 
+\onslide<2>
 With functor
-\begin{spec}
+\begin{code}
 handleResponse = fmap
-\end{spec}
-\end{slide}
-
-\begin{slide}{Functor (cont'd)}
-\begin{problem}
-Reverse user's input \mintinline{haskell}{reverseInput :: IO String -> IO String}
-\end{problem}
-
-Without functor
-\begin{spec}
-TODO
-\end{spec}
-
-With functor
-\begin{spec}
-reverseInput = fmap reverse
-\end{spec}
+\end{code}
+\end{overprint}
 
 \end{slide}
 
 \begin{slide}{Applicative}
-TODO
+
+\begin{problem}
+
+Given the following types
+\begin{code}
+type Name  = String
+type Age   = Int
+data Error = InvalidName | InvalidAge
+data User  = User Name Age
+\end{code}
+and the following validation functions
+\begin{code}
+validateName :: Name -> Either Error Name
+validateAge :: Age -> Either Error Age
+\end{code}
+\ignore{
+\begin{code}
+validateName = undefined
+validateAge = undefined
+\end{code}
+}
+
+Implement a constructor
+\begin{code}
+mkUser :: Name -> Age -> Either Error User
+\end{code}
+\end{problem}
+\end{slide}
+
+\begin{slide}{Applicative (cont'd)}
+Without Applicative
+{\small
+\begin{spec}
+mkUser name age = case validateName name of
+    Left InvalidName -> Left InvalidName
+    _                -> case validateAge age of
+                          Left InvalidAge -> Left InvalidAge
+                          _               -> Right (User name age)
+\end{spec}
+}
+\end{slide}
+
+\begin{slide}{Applicative (cont'd)}
+With Applicative
+\begin{code}
+mkUser name age =
+    User <$> validateName name <*> validateAge age
+\end{code}
 \end{slide}
 
 \begin{slide}{Monad}
