@@ -524,7 +524,7 @@ Given the following types
 \begin{code}
 type Name  = String
 type Age   = Int
-data Error = InvalidName | InvalidAge
+data Error = InvalidName | InvalidAge | InvalidUser
 data User  = User Name Age
 \end{code}
 and the following validation functions
@@ -568,7 +568,45 @@ mkUser name age =
 \end{slide}
 
 \begin{slide}{Monad}
-TODO
+\begin{problem}
+Same as the previous problem, plus the following constraints
+\begin{code}
+validateUser :: User -> Either Error User
+validateUser (User name age) =
+    if name == "Lambda" && age > 25
+        then Right (User name age)
+        else Left  InvalidUser
+
+mkUser' :: Name -> Age -> Either Error User
+\end{code}
+\end{problem}
+\end{slide}
+
+\begin{slide}{Monad (cont'd)}
+Without Monad
+\begin{spec}
+mkUser' name age =
+    case validateName name of
+        Left InvalidName -> Left InvalidName
+        _ ->
+            case validateAge age of
+                Left InvalidAge -> Left InvalidAge
+                _ ->
+                    case validateUser (User name age) of
+                        Left InvalidUser -> Left InvalidUser
+                        _ ->
+                            Right (User name age)
+\end{spec}
+\end{slide}
+
+\begin{slide}{Monad (cont'd)}
+With Monad
+\begin{code}
+mkUser' name age = do
+    name' <- validateName name
+    age'  <- validateAge age
+    validateUser (User name' age')
+\end{code}
 \end{slide}
 
 \subsection{Fundamental difference}
