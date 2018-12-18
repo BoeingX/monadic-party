@@ -3,6 +3,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{babel}
+\usepackage{subfig}
 \usepackage{minted}
 
 \newenvironment{code}{\VerbatimEnvironment\begin{minted}[breaklines]{haskell}}{\end{minted}}
@@ -66,23 +67,35 @@ add x y =  x + y
 
 add' :: Integer -> Integer -> Integer
 add' =  (+)
-
 addOne :: Integer -> Integer
 addOne = (+) 1
 
 addTwoOnes :: Integer
 addTwoOnes = addOne 1
+
+add'' :: Integer -> Integer -> Integer
+add'' = \x y -> x + y
 \end{code}
 \end{slide}
 
 \begin{slide}{Abstract data type}
 \begin{code}
-data Trivial = Trivial
-data Identity a = Identity a
-data Pair a = Pair a a
+-- sum type
+data Sum = A Int | B Bool
 
+-- product type
+data Prod = Prod Int Bool
+
+data Combine
+  = First Int Int | Second String
+\end{code}
+\end{slide}
+
+\begin{slide}{Abstract data type (cont'd)}
+\begin{code}
 data Maybe a = Nothing | Just a
     deriving (Eq, Show)
+
 data Either a b = Left a | Right b
     deriving (Eq, Show)
 
@@ -90,10 +103,36 @@ data Either a b = Left a | Right b
 -- so we cannot "redefine" list using
 -- data [] a = [] | a : [a]
 data List a = Nil | Cons a (List a)
+
 data Tree a = Leaf | Node a (Tree a) (Tree a)
 \end{code}
 \end{slide}
 
+\begin{slide}{Pattern matching, guard and case}
+\begin{code}
+fromMaybe :: a -> Maybe a -> a
+fromMaybe _ (Just a) = a
+fromMaybe a Nothing  = a
+\end{code}
+\end{slide}
+
+\begin{slide}{Pattern matching, guard and case (cont'd)}
+\begin{code}
+safeHead :: [a] -> Maybe a
+safeHead []       = Nothing
+safeHead (x : xs) = Just x
+
+safeHead' :: [a] -> Maybe a
+safeHead' xs
+    | length xs == 0 = Nothing
+    | otherwise      = Just (head xs)
+
+safeHead'' :: [a] -> Maybe a
+safeHead'' xs = case xs of
+    []     -> Nothing
+    (x:xs) -> Just x
+\end{code}
+\end{slide}
 \section{Typeclassopedia}
 
 \begin{slide}{Typeclass}
@@ -170,11 +209,11 @@ fmap id = id
 fmap (g . h) = (fmap g) . (fmap h)
 \end{spec}
 \begin{block}{Property}
-A given type has at most one valid instance of Functor (\href{http://article.gmane.org/gmane.comp.lang.haskell.libraries/15384}{proof})
+A given type has at most one valid instance of Functor (\href{http://article.gmane.org/gmane.comp.lang.haskell.libraries/15384}{proof here})
 \end{block}
 
 \begin{block}{Property}
-Any Functor instance satisfying the first law (fmap id = id) will automatically satisfy the second law (\href{https://github.com/quchen/articles/blob/master/second\_functor\_law.md}{proof})
+Any Functor instance satisfying the first law will automatically satisfy the second law (\href{https://github.com/quchen/articles/blob/master/second\_functor\_law.md}{proof here})
 \end{block}
 \end{slide}
 
@@ -199,6 +238,10 @@ Nothing
 \end{slide}
 
 \begin{slide}{Functor instances - Either e}
+\begin{overprint}
+\onslide<1>
+Any idea?
+\onslide<2>
 \begin{definition}
 \begin{code}
 instance Functor (Either e) where
@@ -216,6 +259,7 @@ Prelude> fmap (+1) (Right 1)
 Right 2
 \end{spec}
 \end{example}
+\end{overprint}
 \end{slide}
 
 \begin{slide}{Functor instances - []}
@@ -265,6 +309,10 @@ u <*> (v <*> w) = pure (.) <*> u <*> v <*> w
 \end{slide}
 
 \begin{slide}{Applicative instances - Maybe}
+\begin{overprint}
+\onslide<1>
+Any idea?
+\onslide<2>
 \begin{definition}
 \begin{code}
 instance Applicative Maybe where
@@ -280,13 +328,14 @@ instance Applicative Maybe where
 \begin{example}
 \begin{spec}
 Prelude> pure 1 :: Maybe Int
-Just 5
+Just 1
 Prelude> Just (+1) <*> Just 2
 Just 3
 Prelude> Just (++ " world") <*> Just "Hello"
 Just "Hello world"
 \end{spec}
 \end{example}
+\end{overprint}
 \end{slide}
 
 \begin{slide}{Applicative instances - Either e}
@@ -467,6 +516,10 @@ Left "hello"
 \end{slide}
 
 \begin{slide}{Monad instances - []}
+\begin{overprint}
+\onslide<1>
+Any idea?
+\onslide<2>
 \begin{definition}
 \begin{spec}
 instance Monad [] where
@@ -483,6 +536,7 @@ Prelude> [1, 2, 3] >> \x -> replicate x x
 [1,2,2,3,3,3]
 \end{spec}
 \end{example}
+\end{overprint}
 \end{slide}
 
 
@@ -657,4 +711,20 @@ Prelude> [0,0,0] >>= \x -> replicate x x
 
 \end{slide}
 
+\subsection{Go further}
+\begin{slide}{Want to learn more?}
+Learning resources
+\begin{itemize}
+\item tutorials
+\item online courses
+\item books
+\begin{itemize}
+\item Learn you a haskell for great good
+\item Haskell programming from first principles
+\item Real world haskell
+\item Parallel and Concurrent Programming in Haskell
+\end{itemize}
+\item IRC channel \texttt{\#haskell} on FreeNode
+\end{itemize}
+\end{slide}
 \end{document}
